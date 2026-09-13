@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Brand orange used behind the launch splash; matches the bottom of the icon gradient. -->
+    <color name="splash_bg">#F9812C</color>
+</resources>

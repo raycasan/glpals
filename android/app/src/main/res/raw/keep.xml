@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The chime is looked up by name from Dart, so the resource shrinker must not drop it. -->
+<resources xmlns:tools="http://schemas.android.com/tools"
+    tools:keep="@raw/glpals_chime,@raw/glpals_countdown" />

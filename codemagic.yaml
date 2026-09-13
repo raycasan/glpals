@@ -1,0 +1,136 @@
+# Codemagic build configuration.
+#
+# The point of this file is the iOS side: there is no Mac here, so the iPhone
+# build has to happen on Codemagic's macOS machines. Three workflows:
+#
+#   android            APK, runs anywhere, no Apple account needed.
+#   ios-unsigned       Proves the app compiles for iOS. No Apple account
+#                      needed, but the result cannot be installed on a phone.
+#   ios-adhoc          An .ipa that installs on named iPhones. Needs a paid
+#                      Apple Developer Program membership and the target
+#                      device UDIDs registered.
+#
+# Flutter is pinned to the version this project is developed against, so a
+# stable-channel bump cannot break a build without us choosing it.
+
+definitions:
+  flutter_version: &flutter_version 3.47.2
+
+  base_scripts:
+    - &pub_get
+      name: Fetch packages
+      script: flutter pub get
+    - &analyze
+      name: Analyze
+      script: flutter analyze
+    - &unit_tests
+      name: Unit tests
+      script: flutter test
+
+workflows:
+  # ---------------------------------------------------------------- Android
+  android:
+    name: Android debug APK
+    instance_type: linux_x2
+    max_build_duration: 30
+    environment:
+      flutter: *flutter_version
+      java: 17
+    scripts:
+      - *pub_get
+      - *analyze
+      - *unit_tests
+      - name: Build debug APK
+        script: flutter build apk --debug
+    artifacts:
+      - build/app/outputs/flutter-apk/*.apk
+    publishing:
+      email:
+        # Replace with the address that should receive builds.
+        recipients:
+          - you@example.com
+        notify:
+          success: true
+          failure: true
+
+  # ----------------------------------------------------------- iOS, no cert
+  # Run this one first. It answers "does GLPals build for iOS at all?" without
+  # any Apple paperwork. The .app it produces runs only in a simulator.
+  ios-unsigned:
+    name: iOS build (unsigned)
+    instance_type: mac_mini_m2
+    max_build_duration: 45
+    environment:
+      flutter: *flutter_version
+      xcode: latest
+      cocoapods: default
+    scripts:
+      - *pub_get
+      - *analyze
+      - *unit_tests
+      - name: Build iOS without signing
+        script: flutter build ios --debug --no-codesign
+    artifacts:
+      - build/ios/iphoneos/Runner.app
+      - flutter_drive.log
+    publishing:
+      email:
+        recipients:
+          - you@example.com
+        notify:
+          success: true
+          failure: true
+
+  # ------------------------------------------------------- iOS, installable
+  # Produces an .ipa that can be installed on iPhones whose UDIDs are in the
+  # ad-hoc provisioning profile.
+  #
+  # Before this works, in Codemagic:
+  #   1. Add an App Store Connect API key under Teams > Integrations.
+  #   2. Put these in an environment group called "appstore":
+  #        APP_STORE_CONNECT_ISSUER_ID
+  #        APP_STORE_CONNECT_KEY_IDENTIFIER
+  #        APP_STORE_CONNECT_PRIVATE_KEY
+  #        CERTIFICATE_PRIVATE_KEY        (an RSA key; Codemagic can generate one)
+  #   3. Register each test iPhone's UDID in the Apple Developer portal.
+  ios-adhoc:
+    name: iOS ad-hoc IPA
+    instance_type: mac_mini_m2
+    max_build_duration: 60
+    environment:
+      flutter: *flutter_version
+      xcode: latest
+      cocoapods: default
+      groups:
+        - appstore
+      vars:
+        BUNDLE_ID: "com.glpbuddy.glpBuddy"
+    scripts:
+      - name: Set up keychain
+        script: keychain initialize
+      - name: Fetch signing files
+        script: |
+          app-store-connect fetch-signing-files "$BUNDLE_ID" \
+            --type IOS_APP_ADHOC \
+            --create
+      - name: Add certificates to keychain
+        script: keychain add-certificates
+      - name: Apply provisioning profiles to the Xcode project
+        script: xcode-project use-profiles
+      - *pub_get
+      - *analyze
+      - *unit_tests
+      - name: Build the IPA
+        script: |
+          flutter build ipa --release \
+            --export-options-plist=/Users/builder/export_options.plist
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+    publishing:
+      email:
+        recipients:
+          - you@example.com
+        notify:
+          success: true
+          failure: true

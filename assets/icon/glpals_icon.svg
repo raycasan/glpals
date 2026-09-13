@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="1024" height="1024">
+  <!-- GLPals app icon: a smiling bathroom scale on a warm orange gradient (artwork supplied by the user). Rendered at 1024 px by the icon pipeline. -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFC58A"/>
+      <stop offset="1" stop-color="#F9812C"/>
+    </linearGradient>
+    <linearGradient id="body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#FFF3E8"/>
+    </linearGradient>
+    <linearGradient id="dial" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#FFF6EC"/>
+    </linearGradient>
+    <clipPath id="round"><rect width="512" height="512" rx="112"/></clipPath>
+    <clipPath id="dialclip"><path d="M136 236 A 120 120 0 0 1 376 236 L 376 240 L 136 240 Z"/></clipPath>
+  </defs>
+
+  <g clip-path="url(#round)">
+    <rect width="512" height="512" fill="url(#bg)"/>
+    <circle cx="256" cy="-110" r="230" fill="#FFFFFF" opacity="0.14"/>
+    <circle cx="256" cy="600" r="300" fill="#FFFFFF" opacity="0.10"/>
+  </g>
+
+  <ellipse cx="256" cy="450" rx="120" ry="14" fill="#8A3A0F" opacity="0.22"/>
+
+  <!-- Scale body -->
+  <rect x="106" y="86" width="300" height="352" rx="56" fill="url(#body)" stroke="#D9661A" stroke-width="8"/>
+
+  <!-- Dial (half circle) -->
+  <path d="M136 236 A 120 120 0 0 1 376 236 Z" fill="url(#dial)" stroke="#E07A2A" stroke-width="6" stroke-linejoin="round"/>
+
+  <!-- Colored arc band -->
+  <path d="M152 236 A 104 104 0 0 1 360 236" fill="none" stroke="#FFC58A" stroke-width="18" clip-path="url(#dialclip)"/>
+
+  <!-- Tick marks (mirrored) -->
+  <g stroke="#E07A2A" stroke-width="5" stroke-linecap="round">
+    <line x1="256" y1="118" x2="256" y2="140"/>
+    <line x1="164.6" y1="213.5" x2="181.8" y2="219.1"/>
+    <line x1="347.4" y1="213.5" x2="330.2" y2="219.1"/>
+    <line x1="187.8" y1="167.8" x2="202.4" y2="178.4"/>
+    <line x1="324.2" y1="167.8" x2="309.6" y2="178.4"/>
+    <line x1="219.1" y1="126.3" x2="224.7" y2="143.5"/>
+    <line x1="292.9" y1="126.3" x2="287.3" y2="143.5"/>
+  </g>
+  <g stroke="#E07A2A" stroke-width="3" stroke-linecap="round" opacity="0.7">
+    <line x1="175.4" y1="190.2" x2="188.4" y2="198.6"/>
+    <line x1="336.6" y1="190.2" x2="323.6" y2="198.6"/>
+    <line x1="202.7" y1="145.1" x2="212.7" y2="157.2"/>
+    <line x1="309.3" y1="145.1" x2="299.3" y2="157.2"/>
+    <line x1="237.4" y1="120.1" x2="240.1" y2="138"/>
+    <line x1="274.6" y1="120.1" x2="271.9" y2="138"/>
+  </g>
+
+  <!-- Needle (pointing straight up) -->
+  <path d="M256 130 L 266 232 L 246 232 Z" fill="#FF5A36" stroke="#C0401F" stroke-width="4" stroke-linejoin="round"/>
+  <circle cx="256" cy="236" r="14" fill="#FF5A36" stroke="#C0401F" stroke-width="4"/>
+  <circle cx="256" cy="236" r="5" fill="#FFFFFF"/>
+
+  <!-- Cheeks -->
+  <circle cx="176" cy="338" r="22" fill="#FFB199" opacity="0.9"/>
+  <circle cx="336" cy="338" r="22" fill="#FFB199" opacity="0.9"/>
+
+  <!-- Eyes -->
+  <circle cx="208" cy="310" r="17" fill="#4A2A14"/>
+  <circle cx="304" cy="310" r="17" fill="#4A2A14"/>
+  <circle cx="214" cy="303" r="6" fill="#FFFFFF"/>
+  <circle cx="310" cy="303" r="6" fill="#FFFFFF"/>
+
+  <!-- Smile -->
+  <path d="M212 352 Q 256 396, 300 352" fill="none" stroke="#4A2A14" stroke-width="10" stroke-linecap="round"/>
+</svg>

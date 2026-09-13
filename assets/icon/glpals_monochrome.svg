@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <!-- Monochrome layer for Android 13+ themed icons. White = opaque, black = cut-out; the pipeline converts black to transparency. -->
+  <g transform="translate(512 512) scale(1.5) translate(-256 -273)">
+    <rect x="102" y="82" width="308" height="360" rx="60" fill="#FFFFFF"/>
+    <!-- dial outline + needle -->
+    <path d="M136 236 A 120 120 0 0 1 376 236 Z" fill="none" stroke="#000000" stroke-width="12" stroke-linejoin="round"/>
+    <path d="M256 128 L 270 236 L 242 236 Z" fill="#000000"/>
+    <circle cx="256" cy="236" r="18" fill="#000000"/>
+    <!-- face -->
+    <circle cx="208" cy="310" r="20" fill="#000000"/>
+    <circle cx="304" cy="310" r="20" fill="#000000"/>
+    <path d="M212 352 Q 256 396, 300 352" fill="none" stroke="#000000" stroke-width="14" stroke-linecap="round"/>
+  </g>
+</svg>
