@@ -123,9 +123,42 @@ class Reminders {
   static const _waterBase = 100; // 100..123 by hour of day
   static const _mealBase = 200; // 200..203 by slot index
 
-  static const _initSettings = InitializationSettings(
-    android: AndroidInitializationSettings('@mipmap/ic_launcher'),
-    iOS: DarwinInitializationSettings(),
+  /// iOS only shows action buttons for categories declared up front, and only
+  /// on notifications that name their category. Android takes its actions from
+  /// the channel details instead, so the two lists must be kept in step: the
+  /// identifiers here are the ones NotificationActions handles.
+  static final _iosCategories = <DarwinNotificationCategory>[
+    DarwinNotificationCategory(
+      'shot',
+      actions: [
+        DarwinNotificationAction.plain('shot_now', 'Took it'),
+        DarwinNotificationAction.plain('shot_snooze', 'Remind in 1 h'),
+      ],
+    ),
+    DarwinNotificationCategory(
+      'water',
+      actions: [
+        DarwinNotificationAction.plain('water_1', '+1 glass'),
+        DarwinNotificationAction.plain('water_2', '+2 glasses'),
+      ],
+    ),
+    DarwinNotificationCategory(
+      'meal',
+      actions: [
+        DarwinNotificationAction.text(
+          'meal_text',
+          'Log meal',
+          buttonTitle: 'Save',
+          placeholder: 'What did you eat?',
+        ),
+        DarwinNotificationAction.plain('meal_skip', 'Skip today'),
+      ],
+    ),
+  ];
+
+  static final _initSettings = InitializationSettings(
+    android: const AndroidInitializationSettings('@mipmap/ic_launcher'),
+    iOS: DarwinInitializationSettings(notificationCategories: _iosCategories),
   );
 
   static Future<void> init() async {
@@ -139,6 +172,12 @@ class Reminders {
     final android = _plugin.resolvePlatformSpecificImplementation<
         AndroidFlutterLocalNotificationsPlugin>();
     await android?.requestNotificationsPermission();
+    // iOS asks during initialize, but asking again is harmless and covers an
+    // install that predates these categories.
+    await _plugin
+        .resolvePlatformSpecificImplementation<
+            IOSFlutterLocalNotificationsPlugin>()
+        ?.requestPermissions(alert: true, badge: true, sound: true);
     // Pre-chime channels; their settings are frozen by Android, so they were
     // replaced by *_v2 channels that carry the custom sound.
     for (final old in const ['shots', 'water', 'meals']) {
@@ -161,10 +200,14 @@ class Reminders {
   static Future<void> playChime() async {
     if (!_ready) return;
     await _plugin.show(
-        _testId,
-        'This is your reminder chime 🔔',
-        'Shot, water and meal reminders all sound like this.',
-        const NotificationDetails(android: _shotDetails));
+      _testId,
+      'This is your reminder chime 🔔',
+      'Shot, water and meal reminders all sound like this.',
+      const NotificationDetails(
+        android: _shotDetails,
+        iOS: DarwinNotificationDetails(sound: 'glpals_chime.wav'),
+      ),
+    );
   }
 
   /// Posts a live water reminder so the action buttons (and any paired watch)
@@ -182,7 +225,13 @@ class Reminders {
       'Sip time 💧',
       'Tap +1 glass to check the buttons. This also shows on a paired watch.',
       const NotificationDetails(
-          android: _waterDetails, iOS: DarwinNotificationDetails()),
+        android: _waterDetails,
+        iOS: DarwinNotificationDetails(
+          sound: 'glpals_chime.wav',
+          categoryIdentifier: 'water',
+          interruptionLevel: InterruptionLevel.timeSensitive,
+        ),
+      ),
       payload: 'water',
     );
   }
@@ -441,9 +490,13 @@ class Reminders {
         // the Android channels use are copied into ios/Runner, so the
         // countdown keeps its distinct chime there too.
         iOS: DarwinNotificationDetails(
-            sound: details.channelId == 'countdown_v1'
-                ? 'glpals_countdown.wav'
-                : 'glpals_chime.wav'),
+          sound: details.channelId == 'countdown_v1'
+              ? 'glpals_countdown.wav'
+              : 'glpals_chime.wav',
+          // Without a category iOS shows no buttons at all.
+          categoryIdentifier: payload.split(':').first,
+          interruptionLevel: InterruptionLevel.timeSensitive,
+        ),
       ),
       payload: payload,
       androidScheduleMode: exact

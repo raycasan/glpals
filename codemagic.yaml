@@ -6,9 +6,15 @@
 #   android            APK, runs anywhere, no Apple account needed.
 #   ios-unsigned       Proves the app compiles for iOS. No Apple account
 #                      needed, but the result cannot be installed on a phone.
-#   ios-adhoc          An .ipa that installs on named iPhones. Needs a paid
-#                      Apple Developer Program membership and the target
-#                      device UDIDs registered.
+#   ios-testflight     The easy way onto someone else's iPhone: upload to
+#                      TestFlight and invite them by email. No UDIDs to
+#                      collect, and updates arrive by themselves.
+#   ios-adhoc          An .ipa installed by cable or link, for iPhones whose
+#                      UDIDs are registered. Useful when TestFlight review
+#                      would be in the way.
+#
+# Both iOS distribution workflows need the Apple Developer Program membership
+# and an App Store Connect API key added to Codemagic.
 #
 # Flutter is pinned to the version this project is developed against, so a
 # stable-channel bump cannot break a build without us choosing it.
@@ -74,6 +80,53 @@ workflows:
       - build/ios/iphoneos/Runner.app
       - flutter_drive.log
     publishing:
+      email:
+        recipients:
+          - you@example.com
+        notify:
+          success: true
+          failure: true
+
+  # ----------------------------------------------------------- iOS, TestFlight
+  # The recommended route for testing on a phone you do not hold. Requires the
+  # app to exist in App Store Connect with a matching bundle id; create it once
+  # under My Apps, then invite the tester by email.
+  ios-testflight:
+    name: iOS to TestFlight
+    instance_type: mac_mini_m2
+    max_build_duration: 60
+    integrations:
+      # Name of the App Store Connect API key added under Teams > Integrations.
+      app_store_connect: codemagic
+    environment:
+      flutter: *flutter_version
+      xcode: latest
+      cocoapods: default
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.glpbuddy.glpBuddy
+    scripts:
+      - name: Set the build number
+        script: |
+          # Codemagic keeps a build counter per project; Apple needs each
+          # upload to carry a higher one than the last.
+          agvtool new-version -all "$BUILD_NUMBER"
+      - *pub_get
+      - *analyze
+      - *unit_tests
+      - name: Build the IPA
+        script: |
+          flutter build ipa --release --export-options-plist=/Users/builder/export_options.plist
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true
+        # Add the tester to this group in App Store Connect first.
+        beta_groups:
+          - Family
       email:
         recipients:
           - you@example.com
