@@ -71,3 +71,6 @@ app.*.map.json
 # Local build scratch that should never reach CI
 /cmds.txt
 /run.log
+
+# Local safety copies of phone data. Personal health logs: never commit.
+/backups/
