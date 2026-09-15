@@ -91,32 +91,52 @@ workflows:
   # The recommended route for testing on a phone you do not hold. Requires the
   # app to exist in App Store Connect with a matching bundle id; create it once
   # under My Apps, then invite the tester by email.
+  #
+  # Signing is fetched from Apple on every build, and the distribution
+  # certificate and App Store profile are created there if they do not exist
+  # yet, so nothing has to be uploaded to Codemagic by hand. The one secret it
+  # needs is CERTIFICATE_PRIVATE_KEY (an RSA key; Codemagic can generate one)
+  # in the "appstore" environment group, so every build signs with the same
+  # certificate instead of minting a new one.
   ios-testflight:
     name: iOS to TestFlight
     instance_type: mac_mini_m2
     max_build_duration: 60
     integrations:
       # Name of the App Store Connect API key added under Teams > Integrations.
+      # It also supplies the APP_STORE_CONNECT_* variables the signing tools use.
       app_store_connect: codemagic
     environment:
       flutter: *flutter_version
       xcode: latest
       cocoapods: default
-      ios_signing:
-        distribution_type: app_store
-        bundle_identifier: com.glpbuddy.glpBuddy
+      groups:
+        - appstore
+      vars:
+        BUNDLE_ID: "com.glpbuddy.glpBuddy"
     scripts:
-      - name: Set the build number
+      - name: Set up keychain
+        script: keychain initialize
+      - name: Fetch signing files
         script: |
-          # Codemagic keeps a build counter per project; Apple needs each
-          # upload to carry a higher one than the last.
-          agvtool new-version -all "$BUILD_NUMBER"
+          app-store-connect fetch-signing-files "$BUNDLE_ID" \
+            --type IOS_APP_STORE \
+            --create
+      - name: Add certificates to keychain
+        script: keychain add-certificates
+      - name: Apply provisioning profiles to the Xcode project
+        # Also writes the export options plist the IPA build reads below.
+        script: xcode-project use-profiles
       - *pub_get
       - *analyze
       - *unit_tests
       - name: Build the IPA
         script: |
-          flutter build ipa --release --export-options-plist=/Users/builder/export_options.plist
+          # Codemagic keeps a build counter per project; Apple needs each
+          # upload to carry a higher one than the last.
+          flutter build ipa --release \
+            --build-number="$BUILD_NUMBER" \
+            --export-options-plist=/Users/builder/export_options.plist
     artifacts:
       - build/ios/ipa/*.ipa
       - /tmp/xcodebuild_logs/*.log
