@@ -143,10 +143,8 @@ workflows:
     publishing:
       app_store_connect:
         auth: integration
+        # Internal testers get each build without a group or Beta App Review.
         submit_to_testflight: true
-        # Add the tester to this group in App Store Connect first.
-        beta_groups:
-          - Family
       email:
         recipients:
           - you@example.com
