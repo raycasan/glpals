@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import 'backup_service.dart';
 import 'db.dart';
+import 'live_activity.dart';
 import 'med.dart';
 import 'reminders.dart';
 import 'screens/assistant_screen.dart';
@@ -36,9 +37,14 @@ Future<bool> _startup() async {
   await _guard(WidgetPrefs.load);
   await _guard(MedPrefs.instance.load);
   await _guard(Profile.instance.load);
+  // Reminders.init ends with a sync, and that sync also refreshes the Dynamic
+  // Island, so everything the island reads has to be loaded before it: with
+  // LiveActivityPrefs still at its default (off) it would end the activity on
+  // every launch, and with PetPrefs unloaded it would show the wrong pal.
+  await _guard(PetPrefs.load);
+  await _guard(LiveActivityPrefs.load);
   await _guard(Reminders.init);
   await _guard(ThemePrefs.load);
-  await _guard(PetPrefs.load);
   await _guard(BackupService.instance.init);
   var firstRun = true;
   await _guard(() async {

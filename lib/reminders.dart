@@ -5,6 +5,7 @@ import 'package:timezone/data/latest.dart' as tzdata;
 import 'package:timezone/timezone.dart' as tz;
 
 import 'db.dart';
+import 'live_activity.dart';
 import 'med.dart';
 import 'notification_actions.dart';
 import 'theme.dart';
@@ -442,6 +443,11 @@ class Reminders {
         repeat: DateTimeComponents.time,
       );
     }
+
+    // The Dynamic Island shows the same dose countdown these reminders are
+    // built around, so it is refreshed here rather than at each call site:
+    // everything that writes data already comes through sync().
+    await LiveActivities.sync();
   }
 
   /// One-off shot nudge an hour from now (from the "Remind in 1 h" action).

@@ -18,6 +18,11 @@
 #
 # Flutter is pinned to the version this project is developed against, so a
 # stable-channel bump cannot break a build without us choosing it.
+#
+# The iOS app embeds a widget extension (ios/GlpalsWidgets) for the Dynamic
+# Island countdown. It builds as a dependency of the Runner scheme, so nothing
+# extra is needed to compile it, but the signed workflows below have to fetch a
+# second provisioning profile for its own bundle id.
 
 definitions:
   flutter_version: &flutter_version 3.47.2
@@ -119,9 +124,14 @@ workflows:
         script: keychain initialize
       - name: Fetch signing files
         script: |
-          app-store-connect fetch-signing-files "$BUNDLE_ID" \
-            --type IOS_APP_STORE \
-            --create
+          # The app and its widget extension are separate bundle ids,
+          # and each needs its own profile: the embedded .appex is
+          # signed too, so one profile is not enough.
+          for id in "$BUNDLE_ID" "$BUNDLE_ID.GlpalsWidgets"; do
+            app-store-connect fetch-signing-files "$id" \
+              --type IOS_APP_STORE \
+              --create
+          done
       - name: Add certificates to keychain
         script: keychain add-certificates
       - name: Apply provisioning profiles to the Xcode project
@@ -190,9 +200,14 @@ workflows:
         script: keychain initialize
       - name: Fetch signing files
         script: |
-          app-store-connect fetch-signing-files "$BUNDLE_ID" \
-            --type IOS_APP_ADHOC \
-            --create
+          # The app and its widget extension are separate bundle ids,
+          # and each needs its own profile: the embedded .appex is
+          # signed too, so one profile is not enough.
+          for id in "$BUNDLE_ID" "$BUNDLE_ID.GlpalsWidgets"; do
+            app-store-connect fetch-signing-files "$id" \
+              --type IOS_APP_ADHOC \
+              --create
+          done
       - name: Add certificates to keychain
         script: keychain add-certificates
       - name: Apply provisioning profiles to the Xcode project

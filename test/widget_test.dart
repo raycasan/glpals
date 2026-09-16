@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:glp_buddy/db.dart';
+import 'package:glp_buddy/live_activity.dart';
 import 'package:glp_buddy/med.dart';
 import 'package:glp_buddy/widgets/common.dart';
 import 'package:glp_buddy/xp.dart';
@@ -80,6 +81,164 @@ void main() {
       expect(fmtCountdown(const Duration(hours: 3, minutes: 20)), '3h 20m');
       expect(fmtCountdown(const Duration(minutes: 45)), '45m');
       expect(fmtCountdown(const Duration(seconds: -5)), 'now');
+    });
+  });
+
+  group('dynamic island', () {
+    final mounjaro = GlpProduct.byId('mounjaro'); // weekly pen, 4 make-up days
+    final rybelsus = GlpProduct.all.firstWhere((p) => !p.injected);
+    final now = DateTime(2026, 9, 16, 9);
+
+    DoseActivityState? state({
+      DateTime? due,
+      GlpProduct? product,
+      int leadHours = 8,
+      int fridgeMinutes = 45,
+      bool fridgeOn = true,
+      String headline = '',
+    }) =>
+        DoseActivityState.stateFor(
+          now: now,
+          dueAt: due,
+          product: product ?? mounjaro,
+          doseMg: 7.5,
+          site: 'Thigh L',
+          leadHours: leadHours,
+          fridgeOn: fridgeOn,
+          fridgeMinutes: fridgeMinutes,
+          headline: headline,
+        );
+
+    test('stays away until the dose is inside the lead window', () {
+      expect(state(due: now.add(const Duration(hours: 9))), isNull);
+      expect(state(due: now.add(const Duration(hours: 7))), isNotNull);
+      expect(state(due: now.add(const Duration(days: 6))), isNull);
+    });
+
+    test('nothing logged yet means nothing to count down to', () {
+      expect(state(due: null), isNull);
+    });
+
+    test('a late dose stays up only while it can still be taken', () {
+      // Tirzepatide allows 4 days.
+      expect(state(due: now.subtract(const Duration(days: 3)))?.overdue, true);
+      expect(state(due: now.subtract(const Duration(days: 5))), isNull);
+    });
+
+    test('a daily product gets a day of grace, not the weekly window', () {
+      expect(state(due: now.subtract(const Duration(hours: 20)),
+              product: rybelsus)
+          ?.overdue, true);
+      expect(
+          state(due: now.subtract(const Duration(days: 2)), product: rybelsus),
+          isNull);
+    });
+
+    test('the fridge tip appears only inside its own window', () {
+      expect(state(due: now.add(const Duration(minutes: 30)))?.fridgeTip, true);
+      expect(state(due: now.add(const Duration(hours: 4)))?.fridgeTip, false);
+      expect(
+          state(due: now.add(const Duration(minutes: 30)), fridgeOn: false)
+              ?.fridgeTip,
+          false);
+    });
+
+    test('a tablet is never asked to come out of the fridge', () {
+      expect(
+          state(due: now.add(const Duration(minutes: 30)), product: rybelsus)
+              ?.fridgeTip,
+          false);
+    });
+
+    test('wording follows the product and the state', () {
+      final soon = state(due: now.add(const Duration(hours: 4)))!;
+      expect(soon.title, 'Shot in');
+      expect(soon.detail, contains('Mounjaro'));
+      expect(soon.detail, contains('Thigh L'));
+
+      expect(state(due: now.subtract(const Duration(hours: 2)))!.title,
+          'Shot overdue');
+      expect(
+          state(due: now.add(const Duration(hours: 4)), product: rybelsus)!
+              .title,
+          'Dose in');
+    });
+
+    test('a reminder takes over the detail line', () {
+      final s = state(
+          due: now.add(const Duration(hours: 4)), headline: 'Time for water')!;
+      expect(s.detail, 'Time for water');
+    });
+
+    test('stale date is the due time, or the end of grace once late', () {
+      final due = now.add(const Duration(hours: 4));
+      expect(state(due: due)!.staleAt, due);
+      final late = now.subtract(const Duration(hours: 4));
+      expect(state(due: late)!.staleAt, late.add(const Duration(days: 4)));
+    });
+
+    test('the island is handed everything it draws', () {
+      final map = state(due: now.add(const Duration(hours: 4)))!.toMap();
+      expect(map['due_ms'], now.add(const Duration(hours: 4))
+          .millisecondsSinceEpoch);
+      expect(map['overdue'], false);
+      expect(map.keys, containsAll(<String>[
+        'due_ms', 'stale_ms', 'title', 'detail', 'water_ml', 'water_goal',
+        'protein_g', 'protein_goal', 'pal_emoji', 'product_emoji',
+      ]));
+    });
+  });
+
+  group('island headline', () {
+    final now = DateTime(2026, 9, 16, 12);
+
+    NotifLog log(String kind, {required int minutesAgo, String? action}) =>
+        NotifLog(
+          at: now.subtract(Duration(minutes: minutesAgo)),
+          kind: kind,
+          title: '$kind title',
+          body: '$kind body',
+          action: action,
+        );
+
+    test('echoes the most recent delivered nudge', () {
+      final n = LiveActivities.headlineFrom(
+          [log('water', minutesAgo: 5), log('meal', minutesAgo: 60)], now);
+      expect(n?.kind, 'water');
+    });
+
+    test('ignores what the island already says itself', () {
+      // The dose reminder, its heads-up and the warm-the-pen nudge all log as
+      // kind 'shot', because Reminders takes the kind from the payload.
+      final n = LiveActivities.headlineFrom(
+          [log('shot', minutesAgo: 2), log('water', minutesAgo: 30)], now);
+      expect(n?.kind, 'water');
+      expect(LiveActivities.headlineFrom([log('shot', minutesAgo: 1)], now),
+          isNull);
+    });
+
+    test('drops one already acted on', () {
+      expect(
+          LiveActivities.headlineFrom(
+              [log('water', minutesAgo: 5, action: 'water 1')], now),
+          isNull);
+    });
+
+    test('forgets a nudge once it is stale', () {
+      expect(LiveActivities.headlineFrom([log('water', minutesAgo: 91)], now),
+          isNull);
+      expect(LiveActivities.headlineFrom([log('water', minutesAgo: 89)], now),
+          isNotNull);
+    });
+
+    test('a reminder that has not fired yet is not a headline', () {
+      final queued = NotifLog(
+        at: now.add(const Duration(hours: 2)),
+        kind: 'water',
+        title: 'later',
+        body: 'later',
+      );
+      expect(LiveActivities.headlineFrom([queued], now), isNull);
     });
   });
 }

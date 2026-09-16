@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 
 import 'ai_service.dart';
 import 'db.dart';
+import 'live_activity.dart';
 import 'med.dart';
 import 'reminders.dart';
 import 'theme.dart';
@@ -85,6 +86,9 @@ class NotificationActions {
       await PetPrefs.load();
       await Goals.load();
       await MedPrefs.instance.load();
+      // Without this the isolate's copy is the default (off) and the sync
+      // below would tear down an island the user has switched on.
+      await LiveActivityPrefs.load();
     }
     await Reminders.sync();
     if (snoozeShot) await Reminders.snoozeShot();

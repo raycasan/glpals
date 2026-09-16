@@ -1,5 +1,8 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 
+import '../live_activity.dart';
 import '../reminders.dart';
 import '../theme.dart';
 import '../widgets/common.dart';
@@ -295,6 +298,56 @@ class ReminderSettings extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 10),
+
+          // ---- Dynamic Island. iOS only, and deliberately not offered
+          // elsewhere: Android has no equivalent surface, so a switch there
+          // would promise something that cannot happen.
+          if (Platform.isIOS) ...[
+            ValueListenableBuilder<int>(
+              valueListenable: LiveActivityPrefs.revision,
+              builder: (context, _, __) => _Group(
+                emoji: '🏝️',
+                title: 'Dynamic Island',
+                subtitle:
+                    'Puts the countdown to your next dose in the island and on '
+                    'the Lock Screen, where it keeps ticking on its own.',
+                value: LiveActivityPrefs.on,
+                onChanged: (v) => LiveActivityPrefs.set(on: v),
+                color: Palette.sky,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Appear this long before a dose is due',
+                        style: TextStyle(
+                            fontSize: 12, color: scheme.onSurfaceVariant)),
+                    const SizedBox(height: 6),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: [
+                        for (final h in LiveActivityPrefs.leadChoices)
+                          Pill(
+                            label: '${h}h',
+                            dense: true,
+                            color: Palette.sky,
+                            selected: LiveActivityPrefs.leadHours == h,
+                            onTap: () => LiveActivityPrefs.set(leadHours: h),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                        'iOS takes the island down by itself after about eight '
+                        'hours, so a longer lead can mean it is already gone '
+                        'by the time the dose is due.',
+                        style: TextStyle(
+                            fontSize: 11, color: scheme.onSurfaceVariant)),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+          ],
 
           // ---- Live test: proves the buttons work and reaches a paired watch
           SoftCard(
