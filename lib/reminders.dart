@@ -154,6 +154,11 @@ class Reminders {
         DarwinNotificationAction.plain('meal_skip', 'Skip today'),
       ],
     ),
+    // The pen-out-of-the-fridge nudge deliberately carries no buttons. It
+    // shares the 'shot' payload, and without its own category it would inherit
+    // "Took it", which logs a full dose at the moment the pen comes out of the
+    // fridge, roughly 45 minutes before it is actually injected.
+    const DarwinNotificationCategory('prep'),
   ];
 
   static final _initSettings = InitializationSettings(
@@ -374,7 +379,8 @@ class Reminders {
               body:
                   'About ${p.fridgeMinutes} minutes at room temperature makes the shot '
                   'much more comfortable. Due at ${ReminderPrefs.fmt(p.shotMinutes)}.',
-              details: _countdownDetails,
+              details: _fridgeDetails,
+              category: 'prep',
               payload: 'shot',
               exact: true,
             );
@@ -469,6 +475,7 @@ class Reminders {
     required String payload,
     DateTimeComponents? repeat,
     bool exact = false,
+    String? category,
   }) async {
     // Queued entry for the in-app panel; past entries are the delivery log.
     await AppDb.instance.logNotif(NotifLog(
@@ -493,8 +500,10 @@ class Reminders {
           sound: details.channelId == 'countdown_v1'
               ? 'glpals_countdown.wav'
               : 'glpals_chime.wav',
-          // Without a category iOS shows no buttons at all.
-          categoryIdentifier: payload.split(':').first,
+          // Without a category iOS shows no buttons at all. Most notifications
+          // want the one named by their payload; [category] overrides that for
+          // the ones that must not offer the payload's actions.
+          categoryIdentifier: category ?? payload.split(':').first,
           interruptionLevel: InterruptionLevel.timeSensitive,
         ),
       ),
@@ -546,6 +555,22 @@ class Reminders {
     actions: [
       AndroidNotificationAction('shot_now', 'Took it ✅'),
     ],
+  );
+
+  /// The same channel and chime as the countdown, so it stays one row in the
+  /// Android notification settings, but with no actions: see the 'prep'
+  /// category above for why this one must not offer "Took it".
+  static const _fridgeDetails = AndroidNotificationDetails(
+    'countdown_v1',
+    'Shot countdown',
+    channelDescription:
+        'Heads-up before your dose, and the nudge to warm the pen',
+    importance: Importance.high,
+    priority: Priority.high,
+    sound: _countdownChime,
+    category: AndroidNotificationCategory.reminder,
+    visibility: NotificationVisibility.public,
+    ticker: 'Take the pen out',
   );
 
   static const _waterDetails = AndroidNotificationDetails(
