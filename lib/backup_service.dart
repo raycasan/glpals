@@ -151,8 +151,14 @@ class BackupService extends ChangeNotifier {
     if (_sdkReady || !configured) return;
     try {
       final signIn = GoogleSignIn.instance;
+      // clientId is who the app says it is (iOS only; null elsewhere, and on
+      // iOS null means "read GIDClientID from Info.plist"). serverClientId is
+      // the Web client the Drive tokens are minted for, on every platform.
       await signIn
-          .initialize(serverClientId: GoogleConfig.clientId)
+          .initialize(
+            clientId: GoogleConfig.appClientId,
+            serverClientId: GoogleConfig.clientId,
+          )
           .timeout(const Duration(seconds: 20));
       signIn.authenticationEvents.listen((event) {
         if (event is GoogleSignInAuthenticationEventSignIn) {

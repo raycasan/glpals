@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'db.dart';
 
 /// Google Sign-In configuration.
@@ -24,11 +26,36 @@ const _pastedClientId =
 /// Settings key for an ID entered on the device.
 const kGoogleClientIdSetting = 'google_server_client_id';
 
+/// iOS identifies *itself* to Google with its own client ID, where Android
+/// proves who it is with the signing certificate instead. So iOS needs a
+/// second, iOS-type client ID, and unlike the Web one it cannot be pasted in
+/// Settings: the matching `com.googleusercontent.apps.<id>` URL scheme has to
+/// be in Info.plist at build time for Google to hand the sign-in back.
+///
+/// Leave this empty to let the plugin read `GIDClientID` from Info.plist,
+/// which is the normal path. Setting it here (or with
+/// `--dart-define=GOOGLE_IOS_CLIENT_ID=...`) overrides the plist, which is
+/// handy in CI where the value is a secret.
+const kGoogleIosClientIdFromBuild = String.fromEnvironment(
+  'GOOGLE_IOS_CLIENT_ID',
+  defaultValue: _pastedIosClientId,
+);
+
+const _pastedIosClientId = '';
+
 class GoogleConfig {
   /// Resolved at startup by [load]. Empty means backup is not set up yet.
   static String clientId = kGoogleServerClientIdFromBuild;
 
   static bool get isSet => clientId.isNotEmpty;
+
+  /// The ID the app identifies itself with, or null to let the platform work
+  /// it out. Only ever non-null on iOS: handing an iOS client ID to Android
+  /// makes Credential Manager reject every sign-in.
+  static String? get appClientId {
+    if (!Platform.isIOS || kGoogleIosClientIdFromBuild.isEmpty) return null;
+    return kGoogleIosClientIdFromBuild;
+  }
 
   static Future<void> load() async {
     if (kGoogleServerClientIdFromBuild.isNotEmpty) {

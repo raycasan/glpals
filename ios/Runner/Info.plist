@@ -12,6 +12,24 @@
 	<string>GLPals reads photos you pick so a meal can be estimated from a picture you already took.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>GLPals saves a copy of the meal photo you attach to a log entry.</string>
+	<!-- Google Sign-In, for bundle id com.glpbuddy.glpBuddy. The two values
+	     below are the same iOS OAuth client ID written two ways: the plain one
+	     identifies the app, and the reversed one registers the URL scheme
+	     Google uses to hand the finished sign-in back. Both must change
+	     together. See docs/google-backup-setup.md. -->
+	<key>GIDClientID</key>
+	<string>931926600742-dv46i37ahvg068htt2120628pu0c7ae9.apps.googleusercontent.com</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.googleusercontent.apps.931926600742-dv46i37ahvg068htt2120628pu0c7ae9</string>
+			</array>
+		</dict>
+	</array>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>fetch</string>

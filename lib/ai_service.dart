@@ -146,7 +146,22 @@ class AiService {
   static const _base =
       'https://generativelanguage.googleapis.com/v1beta/models';
 
-  static Future<String?> getKey() => _storage.read(key: _keyName);
+  /// A key compiled into the build, so an install can answer without anyone
+  /// typing anything:
+  /// `flutter build ipa --dart-define=GEMINI_API_KEY=AIza...`
+  ///
+  /// Only a fallback: a key entered on the phone wins, so the assistant can
+  /// still be pointed at a different key without a rebuild. Note that anything
+  /// compiled in can be read back out of an IPA or APK by whoever holds it, so
+  /// this wants to be a key you are willing to rotate.
+  static const _bakedKey = String.fromEnvironment('GEMINI_API_KEY');
+
+  static Future<String?> getKey() async {
+    final stored = await _storage.read(key: _keyName);
+    if (stored != null && stored.isNotEmpty) return stored;
+    return _bakedKey.isEmpty ? null : _bakedKey;
+  }
+
   static Future<void> setKey(String k) =>
       _storage.write(key: _keyName, value: k.trim());
 

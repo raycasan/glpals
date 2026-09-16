@@ -23,8 +23,9 @@ class BackupSection extends StatelessWidget {
           children.addAll([
             Text(
               'Paste the Web application client ID from your Google Cloud '
-              'project. It ends in .apps.googleusercontent.com and is the one '
-              'thing the app needs before it can sign in.',
+              'project. It ends in .apps.googleusercontent.com. On iPhone the '
+              'app also needs an iOS client ID built into it, which cannot be '
+              'pasted here.',
               style: TextStyle(color: scheme.onSurfaceVariant, height: 1.4),
             ),
             const SizedBox(height: 14),

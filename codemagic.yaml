@@ -134,8 +134,14 @@ workflows:
         script: |
           # Codemagic keeps a build counter per project; Apple needs each
           # upload to carry a higher one than the last.
+          #
+          # GEMINI_API_KEY comes from the "appstore" group and bakes the
+          # assistant's key into the build, so a fresh install answers without
+          # anyone typing it. Leaving it unset is safe: the define becomes an
+          # empty string and the app asks for the key in Settings as before.
           flutter build ipa --release \
             --build-number="$BUILD_NUMBER" \
+            --dart-define=GEMINI_API_KEY="$GEMINI_API_KEY" \
             --export-options-plist=/Users/builder/export_options.plist
     artifacts:
       - build/ios/ipa/*.ipa
@@ -163,6 +169,9 @@ workflows:
   #        APP_STORE_CONNECT_KEY_IDENTIFIER
   #        APP_STORE_CONNECT_PRIVATE_KEY
   #        CERTIFICATE_PRIVATE_KEY        (an RSA key; Codemagic can generate one)
+  #        GEMINI_API_KEY                 (optional, mark it secure; bakes the
+  #                                        assistant's key into the build so a
+  #                                        fresh install answers straight away)
   #   3. Register each test iPhone's UDID in the Apple Developer portal.
   ios-adhoc:
     name: iOS ad-hoc IPA
@@ -194,6 +203,7 @@ workflows:
       - name: Build the IPA
         script: |
           flutter build ipa --release \
+            --dart-define=GEMINI_API_KEY="$GEMINI_API_KEY" \
             --export-options-plist=/Users/builder/export_options.plist
     artifacts:
       - build/ios/ipa/*.ipa
