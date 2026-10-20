@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../ai_service.dart';
+import '../ai_usage.dart';
 import '../backup_service.dart';
 import '../db.dart';
 import '../med.dart';
@@ -1116,7 +1117,9 @@ class _AdvancedPageState extends State<AdvancedPage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const _Intro(
-            'The assistant needs a Gemini API key, free from Google AI Studio.'),
+            'The assistant needs a Gemini API key from Google AI Studio. With '
+            'billing on the key\'s project it skips the free tier\'s busy-hour '
+            'rejections and Google does not train on your data.'),
         TextField(
           controller: _key,
           obscureText: true,
@@ -1138,6 +1141,8 @@ class _AdvancedPageState extends State<AdvancedPage> {
           icon: const Icon(Icons.check_rounded),
           label: const Text('Save key'),
         ),
+        const SizedBox(height: 16),
+        const _UsageCard(),
         const SizedBox(height: 24),
         const SectionTitle('Setup', emoji: '✨'),
         OutlinedButton.icon(
@@ -1166,6 +1171,56 @@ class _AdvancedPageState extends State<AdvancedPage> {
 }
 
 // -------------------------------------------------------------- shared bits
+
+/// This month's assistant usage and what it has cost, from the token counts
+/// Gemini returns, so the bill is readable here instead of guessed at.
+class _UsageCard extends StatelessWidget {
+  const _UsageCard();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final now = DateTime.now();
+    return FutureBuilder<UsageMonth>(
+      future: AiUsage.month(now),
+      builder: (context, snap) {
+        final u = snap.data;
+        final k = NumberFormat.compact();
+        final String line;
+        if (u == null) {
+          line = 'Counting…';
+        } else if (u.requests == 0) {
+          line = 'No requests yet this month.';
+        } else {
+          line = '${u.requests} request${u.requests == 1 ? '' : 's'} · '
+              '${k.format(u.inputTokens)} tokens in · '
+              '${k.format(u.outputTokens)} out · about '
+              '\$${u.usd < 0.01 ? '<0.01' : u.usd.toStringAsFixed(2)}';
+        }
+        return SoftCard(
+          padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+          color: Palette.sky.withValues(alpha: .12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Usage in ${DateFormat('MMMM').format(now)}',
+                  style: theme.textTheme.titleMedium),
+              const SizedBox(height: 2),
+              Text(line, style: const TextStyle(fontWeight: FontWeight.w600)),
+              const SizedBox(height: 4),
+              Text(
+                  'At Google\'s paid-tier price for Gemini 3.8 Flash, including '
+                  'thinking tokens. Balance and limits: aistudio.google.com/billing',
+                  style:
+                      TextStyle(fontSize: 12, color: scheme.onSurfaceVariant)),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
 
 /// Selectable tile used by the companion, widget and appearance pages.
 class _ChoiceTile extends StatelessWidget {

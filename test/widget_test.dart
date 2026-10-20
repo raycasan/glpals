@@ -1,4 +1,8 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
+import 'package:glp_buddy/ai_service.dart';
+import 'package:glp_buddy/ai_usage.dart';
 import 'package:glp_buddy/db.dart';
 import 'package:glp_buddy/live_activity.dart';
 import 'package:glp_buddy/med.dart';
@@ -81,6 +85,97 @@ void main() {
       expect(fmtCountdown(const Duration(hours: 3, minutes: 20)), '3h 20m');
       expect(fmtCountdown(const Duration(minutes: 45)), '45m');
       expect(fmtCountdown(const Duration(seconds: -5)), 'now');
+    });
+  });
+
+  group('assistant errors', () {
+    test('a quota hit says so and can be retried on a billed key', () {
+      final e = AiException.fromStatus(
+          429, '{"error":{"status":"RESOURCE_EXHAUSTED"}}');
+      expect(e.kind, AiErrorKind.quota);
+      expect(e.retryable, true);
+      expect(e.message, contains('Google AI Studio'));
+    });
+
+    test('an empty prepaid balance is a top-up, not a retry', () {
+      final e = AiException.fromStatus(402, '{"error":{"message":"payment"}}');
+      expect(e.kind, AiErrorKind.quota);
+      expect(e.retryable, false);
+      expect(e.message, contains('Billing'));
+    });
+
+    test('a bad key points at Settings', () {
+      final e = AiException.fromStatus(
+          400, '{"error":{"status":"INVALID_ARGUMENT","message":"API_KEY_INVALID"}}');
+      expect(e.kind, AiErrorKind.invalidKey);
+      expect(e.actionLabel, 'Open Settings');
+    });
+
+    test('high demand is retryable and not blamed on the user', () {
+      final e = AiException.fromStatus(503, '{"error":{"message":"overloaded"}}');
+      expect(e.kind, AiErrorKind.overloaded);
+      expect(e.retryable, true);
+      expect(e.message, contains('not you'));
+    });
+
+    test('a retired model reads as such', () {
+      final e = AiException.fromStatus(404, '{"error":{"status":"NOT_FOUND"}}');
+      expect(e.kind, AiErrorKind.unknown);
+      expect(e.message, contains('retired'));
+    });
+
+    test('a timeout is a connection problem, not a key problem', () {
+      final e = AiException.from(TimeoutException('slow'));
+      expect(e.kind, AiErrorKind.timeout);
+      expect(e.retryable, true);
+      expect(e.actionLabel, 'Try again');
+    });
+  });
+
+  group('assistant usage', () {
+    test('thinking tokens are billed as output', () {
+      final c = AiUsage.countsFrom({
+        'usageMetadata': {
+          'promptTokenCount': 1300,
+          'candidatesTokenCount': 60,
+          'thoughtsTokenCount': 340,
+          'totalTokenCount': 1700,
+        }
+      });
+      expect(c?.input, 1300);
+      expect(c?.output, 400);
+    });
+
+    test('a reply without counts records nothing', () {
+      expect(AiUsage.countsFrom({'candidates': []}), isNull);
+    });
+
+    test('price follows the published schedule', () {
+      final meal2026 = AiUsage.estimateUsd(
+          inputTokens: 1300, outputTokens: 400, at: DateTime(2026, 11, 1));
+      final meal2027 = AiUsage.estimateUsd(
+          inputTokens: 1300, outputTokens: 400, at: DateTime(2027, 1, 1));
+      expect(meal2026, closeTo(0.0025, 0.0001));
+      expect(meal2027, closeTo(meal2026 * 2, 0.0001));
+    });
+
+    test('one settings row per calendar month', () {
+      expect(AiUsage.keyFor(DateTime(2026, 10, 20)), 'ai_usage_2026-10');
+      expect(AiUsage.keyFor(DateTime(2027, 1, 3)), 'ai_usage_2027-01');
+    });
+
+    test('a month round-trips through its settings row', () {
+      final m = UsageMonth(
+          at: DateTime(2026, 10, 1),
+          requests: 42,
+          inputTokens: 61000,
+          outputTokens: 9000);
+      final back = UsageMonth.fromMap(
+          Map<String, dynamic>.from(m.toMap()), DateTime(2026, 10, 15));
+      expect(back.requests, 42);
+      expect(back.inputTokens, 61000);
+      expect(back.outputTokens, 9000);
+      expect(back.usd, closeTo(0.0795, 0.0001));
     });
   });
 

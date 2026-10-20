@@ -5,6 +5,7 @@ import 'dart:typed_data';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
+import 'ai_usage.dart';
 import 'db.dart';
 
 /// Why a call to the assistant did not work.
@@ -81,13 +82,30 @@ class AiException implements Exception {
   }
 
   /// Builds the right error from an HTTP failure.
+  ///
+  /// A 429 means different things on Gemini's two tiers: on the free tier it is
+  /// usually the daily allowance, gone until midnight Pacific; on a project with
+  /// billing it is a per-minute limit that clears on its own. The wording covers
+  /// both and the error is retryable, since on a paid key a retry is the fix.
   static AiException fromStatus(int status, String body) {
     final b = body.toLowerCase();
     if (status == 429 || b.contains('resource_exhausted')) {
       return AiException(
         AiErrorKind.quota,
-        'The free Gemini quota for today is used up. It resets after midnight '
-        'Pacific time, or you can raise the limit in Google AI Studio.',
+        'Gemini has hit the limit for this key. On the free tier that lasts '
+        'until midnight Pacific time; with billing on it clears in a minute. '
+        'Limits are shown in Google AI Studio.',
+        detail: body,
+        retryable: true,
+      );
+    }
+    if (status == 402) {
+      // Prepaid billing with nothing left on it. Only the paid tier can return
+      // this, and only a top-up fixes it, so it is deliberately not retryable.
+      return AiException(
+        AiErrorKind.quota,
+        'The prepaid balance on this key\'s Google project is used up, so '
+        'Gemini will not answer. Add credit in Google AI Studio under Billing.',
         detail: body,
       );
     }
@@ -136,13 +154,21 @@ class AiException implements Exception {
 
 /// Thin client for the Google Gemini API (generateContent). The API key is a
 /// Google AI Studio key, stored in the device keychain/keystore.
+///
+/// The key's Google Cloud project decides the tier. On the free tier Google may
+/// use prompts to improve its products and sheds requests with 503 "high
+/// demand" under load; with a billing account linked to the project neither
+/// applies. Nothing in this file changes between the two: the same key keeps
+/// working when billing is switched on.
 class AiService {
   static const _storage = FlutterSecureStorage();
   static const _keyName = 'gemini_api_key';
 
   /// Tried in order; the next one is used when a model is overloaded (503)
-  /// or rate limited (429).
-  static const models = ['gemini-3.8-flash', 'gemini-3.7-flash'];
+  /// or rate limited (429). The fallback is the previous-generation stable
+  /// Flash model as Google lists it; 3.7 Flash has dropped off the model
+  /// list, so leaning on it would turn a busy day into a 404.
+  static const models = ['gemini-3.8-flash', 'gemini-3.6-flash'];
   static const _base =
       'https://generativelanguage.googleapis.com/v1beta/models';
 
@@ -279,6 +305,13 @@ Keep answers short: this is read on a phone. Use plain sentences, no headers. Li
       throw AiException.fromStatus(res.statusCode, res.body);
     }
     final data = jsonDecode(res.body) as Map<String, dynamic>;
+    // Counted before the answer is checked: a blocked or empty reply was still
+    // billed, and the whole point of the count is to match the bill.
+    final counts = AiUsage.countsFrom(data);
+    if (counts != null) {
+      await AiUsage.record(
+          inputTokens: counts.input, outputTokens: counts.output);
+    }
     final candidates = (data['candidates'] as List?) ?? const [];
     if (candidates.isEmpty) {
       final reason = (data['promptFeedback'] as Map?)?['blockReason'];
@@ -325,6 +358,12 @@ Keep answers short: this is read on a phone. Use plain sentences, no headers. Li
   }
 
   /// [history] is alternating user/assistant turns from this chat session.
+  ///
+  /// Thinking is kept low on purpose. Answers here are a few short sentences
+  /// read on a phone, and thinking tokens are billed as output at five times
+  /// the input rate: at the default level they were most of a chat turn's cost
+  /// and most of its wait. Low keeps the pattern-spotting over the tracking
+  /// data; it drops the long deliberation that was not showing in the answer.
   static Future<String> ask(List<Map<String, String>> history) async {
     final context = await buildContext();
     return _call(
@@ -338,6 +377,7 @@ Keep answers short: this is read on a phone. Use plain sentences, no headers. Li
             ],
           },
       ],
+      thinkingLevel: 'low',
     );
   }
 

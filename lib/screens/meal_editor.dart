@@ -78,9 +78,13 @@ class _MealEditorPageState extends State<MealEditorPage> {
     super.dispose();
   }
 
+  /// Gemini bills a photo by 768-px tiles (258 tokens each), so 1024 on the
+  /// long side is two tiles where 1280 was four: half the image cost and a
+  /// faster upload, with no visible loss for judging a plate. Both bounds are
+  /// set so a portrait shot is capped the same way as a landscape one.
   Future<void> _pick(ImageSource src) async {
-    final x = await ImagePicker()
-        .pickImage(source: src, maxWidth: 1280, imageQuality: 80);
+    final x = await ImagePicker().pickImage(
+        source: src, maxWidth: 1024, maxHeight: 1024, imageQuality: 80);
     if (x != null) setState(() => _photo = x);
   }
 

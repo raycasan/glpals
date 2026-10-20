@@ -210,6 +210,14 @@ normalised into an `AiException` carrying user-facing wording, so all screens
 render the same message for the same cause. The system prompt keeps the
 assistant explanatory and points medical decisions at the doctor.
 
+Cost controls, all deliberate: every call runs with `thinkingLevel: 'low'`
+(thinking is billed as output at 5x the input rate and was most of a chat turn's
+cost and latency); meal photos are picked at 1024 px because Gemini bills images
+in 768-px tiles (two tiles instead of four); and `lib/ai_usage.dart` adds each
+reply's `usageMetadata` to a per-month row in the `settings` table
+(`ai_usage_YYYY-MM`), which the Advanced settings page shows with Google's
+published paid-tier price. The 2027 price step lives in `AiUsage`.
+
 ### Backup (`lib/backup_service.dart`)
 
 `ChangeNotifier` singleton uploading `AppDb.exportJson()` (plus the Gemini key)
@@ -282,6 +290,7 @@ must never break a save.
   apply KGP: home_widget" build warning is a known false positive.
 - `/backups/` holds real personal health data pulled off the phone and is
   gitignored. Never commit it.
-- `README.md` predates the current assistant: it describes an Anthropic
-  `claude_service.dart`, which no longer exists (the assistant is Gemini, in
-  `lib/ai_service.dart`). Trust the code over that section.
+- The assistant has been Anthropic, then Gemini; an OpenAI port was built and
+  dropped (2026-10-20). `AiService`'s public surface (`ask`, `analyzeMeal`,
+  `onboardingPlan`, `getKey`/`setKey`) and `AiException` are the stable seam:
+  swapping provider means rewriting `_call` and `fromStatus`, not the callers.
