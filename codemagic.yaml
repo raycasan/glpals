@@ -159,8 +159,13 @@ workflows:
     publishing:
       app_store_connect:
         auth: integration
-        # Internal testers get each build without a group or Beta App Review.
-        submit_to_testflight: true
+        # Upload only. Internal testers (App Store Connect users) get every
+        # build once Apple finishes processing it, with no group and no review.
+        # submit_to_testflight: true would submit each build to Beta App Review,
+        # which is for *external* testers only, needs the Test Information page
+        # in App Store Connect filled in, and failed post-processing on builds
+        # 7 and 8 for exactly that reason.
+        submit_to_testflight: false
       email:
         recipients:
           - you@example.com
