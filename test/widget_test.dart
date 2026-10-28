@@ -132,6 +132,44 @@ void main() {
     });
   });
 
+  group('meal sugar', () {
+    Map<String, Object?> row({Object? sugar = 'absent'}) => {
+          'id': 1,
+          'eaten_at': '2026-10-28T12:30:00.000',
+          'description': 'Tocino with rice',
+          'protein_g': 22,
+          'fiber_g': 1,
+          if (sugar != 'absent') 'sugar_g': sugar,
+          'calories': 610,
+        };
+
+    test('a meal from before sugar was tracked reads as unknown, not zero', () {
+      expect(Meal.fromMap(row()).sugarG, isNull);
+      expect(Meal.fromMap(row(sugar: null)).sugarG, isNull);
+    });
+
+    test('an estimated sugar value survives the database round trip', () {
+      final m = Meal.fromMap(row(sugar: 18));
+      expect(m.sugarG, 18);
+      expect(Meal.fromMap(m.toMap()).sugarG, 18);
+    });
+
+    test('a genuine zero stays zero', () {
+      expect(Meal.fromMap(row(sugar: 0)).sugarG, 0);
+    });
+
+    test('unknown sugar is written back as unknown', () {
+      final m = Meal(
+          eatenAt: DateTime(2026, 10, 28, 8),
+          description: 'Eggs',
+          proteinG: 12,
+          fiberG: 0,
+          calories: 150);
+      expect(m.toMap().containsKey('sugar_g'), true);
+      expect(m.toMap()['sugar_g'], isNull);
+    });
+  });
+
   group('assistant usage', () {
     test('thinking tokens are billed as output', () {
       final c = AiUsage.countsFrom({

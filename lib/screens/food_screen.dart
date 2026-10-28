@@ -58,6 +58,7 @@ class FoodScreenState extends State<FoodScreen> {
         .toList();
     final protein = todayMeals.fold<int>(0, (a, m) => a + m.proteinG);
     final fiber = todayMeals.fold<int>(0, (a, m) => a + m.fiberG);
+    final sugar = todayMeals.fold<int>(0, (a, m) => a + (m.sugarG ?? 0));
     final calories = todayMeals.fold<int>(0, (a, m) => a + m.calories);
 
     return Scaffold(
@@ -91,6 +92,16 @@ class FoodScreenState extends State<FoodScreen> {
                       label: 'Fiber',
                       color: Palette.peach,
                       emoji: '🌾'),
+                  // Goal 0 draws it as a plain tracked number, like energy with
+                  // no calorie target: a sugar limit is a prescriber's call,
+                  // and the buddy is told never to push restriction.
+                  _RingStat(
+                      value: sugar,
+                      goal: 0,
+                      unit: 'g',
+                      label: 'Sugar',
+                      color: Palette.sunshine,
+                      emoji: '🍬'),
                   _RingStat(
                       value: calories,
                       goal: Goals.caloriesKcal,
@@ -161,7 +172,7 @@ class FoodScreenState extends State<FoodScreen> {
                   emoji: '📸',
                   title: 'No meals yet',
                   body:
-                      'Snap a photo of your plate or type what you ate. I will estimate protein, fiber and calories.',
+                      'Snap a photo of your plate or type what you ate. I will estimate protein, fiber, sugar and calories.',
                 ),
               )
             else

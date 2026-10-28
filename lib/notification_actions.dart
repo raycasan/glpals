@@ -104,6 +104,7 @@ class NotificationActions {
         MealSlot.all.where((m) => m.id == slot).map((m) => m.label).firstOrNull;
     var description = slotLabel == null ? text : '$slotLabel: $text';
     var protein = 0, fiber = 0, calories = 0;
+    int? sugar; // unknown unless the estimate comes back
     var confidence = 'manual';
     final hasKey = (await AiService.getKey() ?? '').isNotEmpty;
     if (hasKey) {
@@ -116,6 +117,7 @@ class NotificationActions {
         description = r['description']?.toString() ?? description;
         protein = (r['protein_g'] as num?)?.toInt() ?? 0;
         fiber = (r['fiber_g'] as num?)?.toInt() ?? 0;
+        sugar = (r['sugar_g'] as num?)?.toInt();
         calories = (r['calories'] as num?)?.toInt() ?? 0;
         confidence = r['confidence']?.toString() ?? 'low';
       } catch (_) {
@@ -128,6 +130,7 @@ class NotificationActions {
       ingredients: text,
       proteinG: protein,
       fiberG: fiber,
+      sugarG: sugar,
       calories: calories,
       confidence: confidence,
       photoPath: null,

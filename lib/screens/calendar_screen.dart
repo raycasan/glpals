@@ -739,6 +739,9 @@ class _DaySummary extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final protein = meals.fold<int>(0, (a, m) => a + m.proteinG);
     final fiber = meals.fold<int>(0, (a, m) => a + m.fiberG);
+    // Only meals that were estimated for sugar count; older ones are unknown.
+    final sugarKnown = meals.any((m) => m.sugarG != null);
+    final sugar = meals.fold<int>(0, (a, m) => a + (m.sugarG ?? 0));
     final calories = meals.fold<int>(0, (a, m) => a + m.calories);
     final water = log?.waterMl ?? 0;
 
@@ -760,6 +763,12 @@ class _DaySummary extends StatelessWidget {
                   emoji: '🌾',
                   dense: true,
                   color: Palette.peach),
+              if (sugarKnown)
+                Pill(
+                    label: '$sugar g sugar',
+                    emoji: '🍬',
+                    dense: true,
+                    color: Palette.sunshine),
               Pill(
                   label: '~$calories kcal',
                   emoji: '🔥',
@@ -918,6 +927,12 @@ class MealTile extends StatelessWidget {
                         emoji: '🌾',
                         dense: true,
                         color: Palette.peach),
+                    if (meal.sugarG != null)
+                      Pill(
+                          label: '${meal.sugarG} g',
+                          emoji: '🍬',
+                          dense: true,
+                          color: Palette.sunshine),
                     Pill(
                         label: '~${meal.calories} kcal',
                         emoji: '🔥',

@@ -132,11 +132,17 @@ countdown, reminders, home-screen widget and island silently go stale.
 
 ### Persistence (`lib/db.dart`)
 
-`AppDb.instance` is a lazily opened sqflite singleton, schema version 6.
+`AppDb.instance` is a lazily opened sqflite singleton, schema version 7.
 Migrations are additive `if (old < N)` blocks; use the `_addColumn` helper, which
 checks `PRAGMA table_info` first so a half-applied migration can be retried.
 Tables: `shots`, `daily_logs` (keyed by `yyyy-MM-dd`), `meals`, `med_changes`,
 `dose_skips`, `notif_log`, and `settings` (key/value).
+
+`meals.sugar_g` (v7) is deliberately nullable with no default: NULL means "never
+estimated" (meals from before sugar was tracked, or a blank manual entry), not
+zero. `Meal.sugarG` is `int?`; totals sum only known values, and the UI hides the
+sugar pill rather than show a misleading 0. Sugar is a tracked number with no
+goal, like energy without a calorie target.
 
 **`settings` is the store for every preference** — theme, goals, medication,
 companion, reminders, widget style, Google client ID. `_backupTables` must list

@@ -223,6 +223,12 @@ class Meal {
   final String ingredients; // user-typed, optional
   final int proteinG;
   final int fiberG;
+
+  /// Total sugars in grams, natural and added together. Null means "never
+  /// estimated", not "none": meals logged before sugar was tracked, or typed
+  /// in by hand with the field left blank. Kept apart from 0 so an old meal
+  /// does not read as sugar-free, and totals count only meals that have it.
+  final int? sugarG;
   final int calories;
   final String confidence; // low / medium / high
   final String? photoPath;
@@ -233,6 +239,7 @@ class Meal {
     this.ingredients = '',
     required this.proteinG,
     required this.fiberG,
+    this.sugarG,
     required this.calories,
     this.confidence = 'medium',
     this.photoPath,
@@ -245,6 +252,7 @@ class Meal {
         'ingredients': ingredients,
         'protein_g': proteinG,
         'fiber_g': fiberG,
+        'sugar_g': sugarG,
         'calories': calories,
         'confidence': confidence,
         'photo_path': photoPath,
@@ -256,6 +264,7 @@ class Meal {
         ingredients: (m['ingredients'] as String?) ?? '',
         proteinG: (m['protein_g'] as int?) ?? 0,
         fiberG: (m['fiber_g'] as int?) ?? 0,
+        sugarG: m['sugar_g'] as int?,
         calories: (m['calories'] as int?) ?? 0,
         confidence: (m['confidence'] as String?) ?? 'medium',
         photoPath: m['photo_path'] as String?,
@@ -272,7 +281,7 @@ class AppDb {
     final dir = await getDatabasesPath();
     _db = await openDatabase(
       join(dir, 'glp_buddy.db'),
-      version: 6,
+      version: 7,
       onUpgrade: (d, old, _) async {
         if (old < 2) await d.execute(_mealsSql);
         if (old < 3) await d.execute(_settingsSql);
@@ -282,6 +291,9 @@ class AppDb {
         }
         if (old < 5) await d.execute(_doseSkipsSql);
         if (old < 6) await d.execute(_notifLogSql);
+        // No default on purpose: existing meals get NULL, which Meal reads as
+        // "sugar never estimated" rather than claiming they had none.
+        if (old < 7) await _addColumn(d, 'meals', 'sugar_g', 'INTEGER');
       },
       onCreate: (d, _) async {
         await d.execute('''
@@ -417,6 +429,7 @@ class AppDb {
       ingredients TEXT,
       protein_g INTEGER DEFAULT 0,
       fiber_g INTEGER DEFAULT 0,
+      sugar_g INTEGER,
       calories INTEGER DEFAULT 0,
       confidence TEXT,
       photo_path TEXT

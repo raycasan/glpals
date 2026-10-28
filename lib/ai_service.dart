@@ -240,7 +240,9 @@ Keep answers short: this is read on a phone. Use plain sentences, no headers. Li
     for (final m in meals) {
       b.writeln(
           '  ${DateFormat('MMM d HH:mm').format(m.eatenAt)} ${m.description}: '
-          '${m.proteinG}g protein, ${m.fiberG}g fiber, ~${m.calories} kcal');
+          '${m.proteinG}g protein, ${m.fiberG}g fiber'
+          '${m.sugarG == null ? '' : ', ${m.sugarG}g sugar'}, '
+          '~${m.calories} kcal');
     }
     return b.toString();
   }
@@ -383,13 +385,14 @@ Keep answers short: this is read on a phone. Use plain sentences, no headers. Li
 
   static const _mealPrompt = '''
 You estimate the nutrition of one meal for a personal food log. Return ONLY a JSON object, no prose, no markdown fences:
-{"description": "short name of the meal", "protein_g": int, "fiber_g": int, "calories": int, "confidence": "low"|"medium"|"high", "note": "one short sentence on what drove the estimate"}
+{"description": "short name of the meal", "protein_g": int, "fiber_g": int, "sugar_g": int, "calories": int, "confidence": "low"|"medium"|"high", "note": "one short sentence on what drove the estimate"}
 
 Rules:
 - If the user lists ingredients with amounts, treat those as ground truth and compute from them; use the photo only to fill gaps (cooking method, items they did not list). Confidence should then be high.
 - If ingredients are listed without amounts, use the photo to judge portions. Confidence medium.
 - If only a photo is given, estimate a typical single serving as plated. Confidence low or medium.
 - Assume Filipino home cooking and portions when the food looks like it (rice, ulam, sinigang, adobo, pancit, etc.).
+- sugar_g is total sugars, natural and added together: fruit, milk, rice cakes and kakanin, sweetened drinks and coffee, desserts, and sweet sauces and marinades (banana ketchup, tocino, longganisa, hamonado). Include a drink if one is shown or listed.
 - Round to whole numbers. Never return ranges.
 ''';
 
@@ -399,6 +402,7 @@ Rules:
       'description': {'type': 'STRING'},
       'protein_g': {'type': 'INTEGER'},
       'fiber_g': {'type': 'INTEGER'},
+      'sugar_g': {'type': 'INTEGER'},
       'calories': {'type': 'INTEGER'},
       'confidence': {
         'type': 'STRING',
@@ -410,6 +414,7 @@ Rules:
       'description',
       'protein_g',
       'fiber_g',
+      'sugar_g',
       'calories',
       'confidence',
       'note'

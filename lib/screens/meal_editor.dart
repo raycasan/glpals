@@ -37,6 +37,7 @@ class _MealEditorPageState extends State<MealEditorPage> {
   final _desc = TextEditingController();
   final _protein = TextEditingController();
   final _fiber = TextEditingController();
+  final _sugar = TextEditingController();
   final _cal = TextEditingController();
   String _confidence = '';
   String _note = '';
@@ -56,6 +57,8 @@ class _MealEditorPageState extends State<MealEditorPage> {
       _desc.text = m.description;
       _protein.text = '${m.proteinG}';
       _fiber.text = '${m.fiberG}';
+      // Blank, not 0, for a meal logged before sugar was tracked.
+      _sugar.text = m.sugarG?.toString() ?? '';
       _cal.text = '${m.calories}';
       _confidence = m.confidence;
     } else {
@@ -74,6 +77,7 @@ class _MealEditorPageState extends State<MealEditorPage> {
     _desc.dispose();
     _protein.dispose();
     _fiber.dispose();
+    _sugar.dispose();
     _cal.dispose();
     super.dispose();
   }
@@ -134,6 +138,7 @@ class _MealEditorPageState extends State<MealEditorPage> {
         _desc.text = r['description']?.toString() ?? 'Meal';
         _protein.text = '${r['protein_g'] ?? 0}';
         _fiber.text = '${r['fiber_g'] ?? 0}';
+        _sugar.text = '${r['sugar_g'] ?? ''}';
         _cal.text = '${r['calories'] ?? 0}';
         _confidence = r['confidence']?.toString() ?? '';
         _note = r['note']?.toString() ?? '';
@@ -160,6 +165,8 @@ class _MealEditorPageState extends State<MealEditorPage> {
       ingredients: _ingredients.text.trim(),
       proteinG: int.tryParse(_protein.text) ?? 0,
       fiberG: int.tryParse(_fiber.text) ?? 0,
+      // Left blank stays unknown rather than becoming a claim of zero.
+      sugarG: int.tryParse(_sugar.text.trim()),
       calories: int.tryParse(_cal.text) ?? 0,
       confidence: _confidence.isEmpty ? 'manual' : _confidence,
       photoPath: path,
@@ -379,11 +386,19 @@ class _MealEditorPageState extends State<MealEditorPage> {
                       labelText: 'Meal name', alignLabelWithHint: true),
                 ),
                 const SizedBox(height: 10),
+                // Two by two: four number fields side by side do not fit a
+                // phone's width with their units showing.
                 Row(
                   children: [
                     Expanded(child: _num(_protein, 'Protein', 'g')),
                     const SizedBox(width: 8),
                     Expanded(child: _num(_fiber, 'Fiber', 'g')),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(child: _num(_sugar, 'Sugar', 'g')),
                     const SizedBox(width: 8),
                     Expanded(child: _num(_cal, 'Energy', 'kcal')),
                   ],
